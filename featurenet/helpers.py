@@ -20,9 +20,9 @@ def intersect(ra, rb):
 
         p1 = (max(pa1[0], pb1[0]), max(pa1[1], pb1[1]))
         p2 = (min(pa2[0], pb2[0]), min(pa2[1], pb2[1]))
-        return (p1, p2)
+        return p1, p2
     else:
-        return ((0, 0), (0, 0))
+        return (0, 0), (0, 0)
 
 
 def iou(ra, rb):

@@ -2,9 +2,9 @@
 import torch.optim as optim
 import torch.nn as nn
 
-from models.featurenet import network
-from models.featurenet import training
-from models.featurenet import helpers
+from featurenet import network
+from featurenet import training
+from featurenet import helpers
 
 if __name__ == '__main__':
     model = network.StandardFeatureNet()
