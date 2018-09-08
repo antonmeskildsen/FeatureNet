@@ -290,3 +290,4 @@ class StandardFeatureNet(DeconvNet):
         ]
 
         super().__init__(conv_configuration, deconv_configuration, 256, 14)
+

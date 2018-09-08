@@ -65,9 +65,6 @@ class ConvBlockTests(unittest.TestCase):
                           '\n {}'.format(a))
 
 
-
-
-
 class DeconvBlockTests(unittest.TestCase):
     invalid_setup_args = [
         (1, 1, 3, 0),
@@ -124,6 +121,7 @@ class DeconvBlockTests(unittest.TestCase):
             if c.sum() == 0:
                 self.fail('Weights were not updated correctly for all layers!'
                           '\n {}'.format(a))
+
 
 class DeconvNetTests(unittest.TestCase):
 
