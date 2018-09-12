@@ -15,9 +15,18 @@ trainer = training.Trainer(model, criterion, optimizer)
 
 import cv2 as cv
 import matplotlib.pyplot as plt
+plt.interactive(False)
 
 path = 'E:\\Eyes\\UnityEyes_Windows\\'
 
-dset = dataset.SyntheticDataSet(path, subset='train')
+dset = dataset.SyntheticDataSet(path, subset='imgs', input_crop=(480, 480))
 
-dset.__getitem__(0)
+
+input, target = dset.__getitem__(6070)
+
+plt.figure()
+plt.subplot(1, 2, 1)
+plt.imshow(input)
+plt.subplot(1, 2, 2)
+plt.imshow(target)
+plt.show()

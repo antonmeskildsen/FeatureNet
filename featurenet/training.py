@@ -1,3 +1,7 @@
+import sys
+
+from progressbar import ProgressBar, Percentage, Bar, ETA, SimpleProgress, RotatingMarker
+
 import torch
 from torch import nn
 from torch.utils import data
@@ -20,8 +24,15 @@ class Trainer:
                                        drop_last=True)
 
         for epoch in range(num_epochs):
+            ep_str = 'Epoch: {:2d}/{}'.format(epoch+1, num_epochs)
 
-            for input, target in train_loader:
+            pbar = ProgressBar(widgets=[ep_str, Bar(), ETA()],
+                               maxval=len(train_loader),
+                               max_value=len(train_loader),
+                               fd=sys.stdout).start()
+
+            for i, (input, target) in enumerate(train_loader):
+                pbar.update(i)
                 if use_cuda:
                     input = input.cuda()
                     target = target.cuda()
@@ -32,7 +43,7 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
-
+            pbar.finish()
 
 
 

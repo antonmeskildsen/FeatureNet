@@ -160,15 +160,15 @@ class DeconvNet(nn.Module):
 
         # Create lists of conv and deconv blocks from the configurations
         # passed as arguments to this function
-        self.conv_blocks = [
+        self.conv_blocks = nn.ModuleList([
             ConvBlock(**args)
             for args in conv_block_args
-        ]
+        ])
 
-        self.deconv_blocks = [
+        self.deconv_blocks = nn.ModuleList([
             DeconvBlock(**args)
             for args in deconv_block_args
-        ]
+        ])
 
         # The input and output from the flat channels must be compatible
         # with the configurations for the conv and deconv blocks

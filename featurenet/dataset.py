@@ -1,6 +1,5 @@
 import os
 import json
-import random
 import glob
 
 import numpy as np
@@ -15,7 +14,12 @@ from torchsample.transforms import tensor_transforms
 
 
 class SyntheticDataSet(Dataset):
-    def __init__(self, base_path, subset='train', input_size=(640, 480), input_crop=(224, 224), target_size=(112, 112)):
+    def __init__(self,
+                 base_path, subset='train',
+                 input_size=(640, 480),
+                 input_crop=(224, 224),
+                 input_resize=(112, 112),
+                 target_size=(112, 112)):
         path = os.path.join(base_path, subset)
         if not os.path.exists(path):
             raise ValueError('Invalid base_path and subset combination - path does not exist')
@@ -32,6 +36,7 @@ class SyntheticDataSet(Dataset):
         self._input_size = input_size
         self._input_crop = input_crop
         self._target_size = target_size
+        self._input_resize = input_resize
 
     def _adjust_coordinates(self, coordinates):
         width, height = self._input_size
@@ -59,33 +64,36 @@ class SyntheticDataSet(Dataset):
         coordinates = [(float(x), float(y)) for (x, y, _) in coordinates]
         coordinates = self._adjust_coordinates(coordinates)
 
-        coordinates = np.asarray(coordinates, dtype='int')
+        coordinates = np.asarray(coordinates, dtype=np.int)
         coordinates = coordinates.reshape((-1, 1, 2))
 
-        target = np.zeros((1, *self._target_size), dtype=np.float32)
-        print(coordinates)
-        ellipse = cv.fitEllipse(coordinates)
-        print('hej')
-        return cv.ellipse(target, ellipse, 255, 0)
+        target = np.zeros(self._target_size, dtype=np.uint8)
+        (cx, cy), (ax, ay), a = cv.fitEllipse(coordinates)
+        target = cv.ellipse(target, (int(cx), int(cy)), (int(ax)//2, int(ay)//2), a, 0, 360, 255, thickness=-1)
+
+        return cv.flip(target, 0)
 
     def __getitem__(self, item):
         input_path, target_path = self._elems[item]
 
         input_img = Image.open(input_path)
 
-        print(target_path)
-
         target_file = open(target_path)
         target_json = json.load(target_file)
-        target_img = self._create_target_img(target_json['iris_2d'])
+        target_arr = self._create_target_img(target_json['iris_2d'])
 
-        return self._transform_input(input_img), self._transform_target(target_img)
+        return self._transform_input(input_img), self._transform_target(target_arr)
 
     def _transform_input(self, input_img):
-        return input_img
+        return transforms.Compose([
+            transforms.CenterCrop(self._input_crop),
+            transforms.Resize(self._input_resize),
+            transforms.ToTensor()
+        ])(input_img)
 
-    def _transform_target(self, target_img):
-        return target_img
+    def _transform_target(self, target_arr):
+        target_arr = np.reshape(target_arr, (*self._target_size, 1))
+        return TF.to_tensor(target_arr)
 
     def __len__(self):
         return self._len
