@@ -3,22 +3,15 @@ sys.path.insert(0, '../')
 
 from featurenet import network, training, dataset
 
-import os
 import torch
 from torch import optim, nn
 
 from torchsummary import summary
 
-
-import cv2 as cv
-import matplotlib.pyplot as plt
-
 path = 'E:\\Eyes\\UnityEyes_Windows\\'
 
 
 def main():
-    print(torch.cuda.device_count())
-
     dset = dataset.SyntheticDataSet(path, subset='imgs')
     model = network.StandardFeatureNet()
     model.cuda()
