@@ -33,6 +33,7 @@ class Trainer:
 
             for i, (input, target) in enumerate(train_loader):
                 pbar.update(i)
+
                 if use_cuda:
                     input = input.cuda()
                     target = target.cuda()

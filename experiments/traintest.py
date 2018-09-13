@@ -28,9 +28,9 @@ def main():
     summary(model, (3, 112, 112))
 
     trainer = training.Trainer(model, criterion, optimizer)
-    trainer.train(dset, None, 10, use_cuda=True)
+    trainer.train(dset, None, 20, use_cuda=True)
 
-    torch.save(model.state_dict(), 'saved_models/test.pkl')
+    torch.save(model.state_dict(), 'models/test2.pkl')
 
 
 if __name__ == '__main__':
