@@ -237,7 +237,8 @@ class DeconvNetTests(unittest.TestCase):
             },
         ]
 
-        self.assertRaises(ValueError, network.DeconvNet, *(conv, deconv, 16, 3))
+        self.assertRaises(ValueError, network.DeconvNet,
+                          *(conv, deconv, 16, 3))
 
     def test_correct_output_size(self):
         conv = {

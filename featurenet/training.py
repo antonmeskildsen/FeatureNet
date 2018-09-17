@@ -1,13 +1,139 @@
+import pandas as pd
 
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+
+from torchnet.meter import ConfusionMeter
+
+from featurenet import helpers
 
 class Trainer:
 
-    def __init__(self, model, criterion, optimizer):
-        ...
+    NUM_WORKERS = 8
 
-    def train(self, train_data, val_data, num_epochs, batch_size=32,
-              early_stopping=True, early_stopping_strikes=1):
-        ...
+    def __init__(self,
+                 model: nn.Module,
+                 criterion: nn.Module,
+                 optimizer: optim.Optimizer,
+                 train_data: Dataset,
+                 val_data: Dataset,
+                 num_epochs: int,
+                 batch_size: int = 32,
+                 early_stopping: bool = True,
+                 early_stopping_tries: int = 1,
+                 shuffle: bool = True,
+                 ):
+
+        self._model = model
+        self._criterion = criterion
+        self._optimizer = optimizer
+        self._num_epochs = num_epochs
+        self._batch_size = batch_size
+        self._early_stopping = early_stopping
+        self._early_stopping_tries = early_stopping_tries
+        self._shuffle = shuffle
+
+        self._train_loader = DataLoader(train_data,
+                                        batch_size,
+                                        shuffle,
+                                        num_workers=self.NUM_WORKERS,
+                                        drop_last=True,
+                                        )
+
+        self._val_loader = DataLoader(val_data,
+                                      batch_size,
+                                      shuffle,
+                                      num_workers=self.NUM_WORKERS,
+                                      drop_last=True,
+                                      )
+
+
+    def train(self):
+        for epoch in range(self._num_epochs):
+            for i, (input, target) in enumerate(self._train_loader):
+                input = input.cuda()
+                target = target.cuda()
+
+                output = self._model(input)
+
+                loss = self._criterion(output, target)
+                loss.backward()
+
+                self._optimizer.zero_grad()
+                self._optimizer.step()
+
+
+class DataLogger:
+
+    def __init__(self, num_classes):
+        """
+        :param num_classes: An integer representing the number of
+            classes. If num_classes=2, then the data is expected to
+            have a binary encoding whereas for cases >2, the data is
+            expected to be one-hot encoded.
+        """
+        self._num_classes = num_classes
+        self._meter = ConfusionMeter(num_classes)
+        self._summary_log = self._get_empty_summary_dict()
+
+    @staticmethod
+    def _get_empty_summary_dict():
+        return {
+            'TP': [],
+            'TN': [],
+            'FP': [],
+            'FN': [],
+            'accuracy': [],
+            'precision': [],
+            'recall': [],
+            'f1': [],
+        }
+
+    def log_statistics(self, output, target):
+        flat_output_rounded = output.view((-1, self._num_classes)).round()
+        flat_target = target.view((-1, self._num_classes))
+
+        output_data = flat_output_rounded.data
+        target_data = flat_target.data
+
+        self._meter.add(output_data, target_data)
+
+    def log_epoch_summary(self):
+        conf = self._meter.value()
+        summary = self._calculate_summary(conf)
+
+        self._add_summary_to_log(summary)
+
+    @staticmethod
+    def _calculate_summary(conf):
+        accuracy = helpers.accuracy(conf)
+        precision = helpers.precision(conf)
+        recall = helpers.recall(conf)
+        f1 = helpers.f1_score(precision, recall)
+
+        return {
+            'TP': conf[0][0],
+            'TN': conf[1][1],
+            'FP': conf[0][1],
+            'FN': conf[1][0],
+            'accuracy': accuracy,
+            'precision': precision,
+            'recall': recall,
+            'f1': f1
+        }
+
+    def _add_summary_to_log(self, summary):
+        self._summary_log = \
+            {val.append(summary[key]) for key, val in self._summary_log}
+
+    def new_epoch_reset(self):
+        self._meter.reset()
+
+    def save(self, path):
+        dataframe = pd.DataFrame(self._summary_log)
+        dataframe.to_csv(path)
 
 
 class TrainerA:

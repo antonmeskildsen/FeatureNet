@@ -13,10 +13,8 @@ def intersect(ra, rb):
     pa1, pa2 = ra
     pb1, pb2 = rb
 
-    if pb1[0] < pa2[0] and \
-            pb2[0] > pa1[0] and \
-            pb1[1] < pa2[1] and \
-            pb2[1] > pa1[1]:
+    if pb1[0] < pa2[0] and pb2[0] > pa1[0] \
+            and pb1[1] < pa2[1] and pb2[1] > pa1[1]:
 
         p1 = (max(pa1[0], pb1[0]), max(pa1[1], pb1[1]))
         p2 = (min(pa2[0], pb2[0]), min(pa2[1], pb2[1]))
@@ -40,11 +38,15 @@ def iou(ra, rb):
 
 
 def _validate_conf(conf):
-    negative = (conf[0][0] < 0 or conf[0][1] < 0 or
-                conf[1][0] < 0 or conf[1][1] < 0)
+    negative = (conf[0][0] < 0
+                or conf[0][1] < 0
+                or conf[1][0] < 0
+                or conf[1][1] < 0)
 
-    zero_sum = (conf[0][0] == 0 and conf[0][1] == 0 and
-                conf[1][0] == 0 and conf[1][1] == 0)
+    zero_sum = (conf[0][0] == 0
+                and conf[0][1] == 0
+                and conf[1][0] == 0
+                and conf[1][1] == 0)
 
     if negative or zero_sum:
         raise ValueError("Input matrix is invalid (zero or negative elements)")
@@ -84,12 +86,4 @@ def f1_score(precision, recall):
         return 2 / k
 
 
-def save_stats(conf, stat_object):
-    stat_object['TP'].append(conf[0][0])
-    stat_object['TN'].append(conf[1][1])
-    stat_object['FP'].append(conf[0][1])
-    stat_object['FN'].append(conf[1][0])
-    stat_object['accuracy'].append(accuracy(conf))
-    stat_object['precision'].append(precision(conf))
-    stat_object['recall'].append(recall(conf))
-    stat_object['f1'].append(f1_score(precision(conf), recall(conf)))
+

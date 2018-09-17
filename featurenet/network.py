@@ -30,8 +30,8 @@ class ConvBlock(nn.Module):
         :param in_channels: Number of input channels
         :param out_channels: Number of output channels
         :param kernel_size: Size of all kernels
-        :param num_layers: Number of convolution/normalisation/relu blocks
-                to generate
+        :param num_layers: Number of convolution/normalisation/relu
+                blocks to generate
         :param dropout_rate: Rate for a final dropout layer
         """
         super().__init__()
@@ -63,7 +63,8 @@ class ConvBlock(nn.Module):
     def _create_single_block(in_channels, out_channels,
                              kernel_size):
         return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, padding=1, stride=1),
+            nn.Conv2d(in_channels, out_channels, kernel_size, padding=1,
+                      stride=1),
             nn.BatchNorm2d(out_channels),
             nn.ReLU()
         )
@@ -129,28 +130,29 @@ class DeconvBlock(nn.Module):
 
 class DeconvNet(nn.Module):
     """
-    A fully convolutional network architecture created for the purpose of
-    semantic segmentation of images. It is inspired by ...
+    A fully convolutional network architecture created for the purpose
+    of semantic segmentation of images. It is inspired by ...
 
-    The basic construction is similar to a convolutional auto-encoder, with an
-    encoder, and a decoder network.
+    The basic construction is similar to a convolutional auto-encoder,
+    with an encoder, and a decoder network.
 
-    Future versions might support pre-training the encoder separately from the
-    decoder.
+    Future versions might support pre-training the encoder separately
+    from the decoder.
     """
     def __init__(self, conv_block_args, deconv_block_args, flat_channels,
                  flat_kernel_size):
         """
         Create a new DeconvNet with the desired input size, depth,
-        number of internal channels, as well as the number of input and output
-        channels.
+        number of internal channels, as well as the number of input and
+        output channels.
 
-        :param conv_block_args: Arguments for each ConvBlock (as a dictionary)
+        :param conv_block_args: Arguments for each ConvBlock (as a
+                dictionary)
         :param deconv_block_args: Arguments for each DeconvBlock (as a
             dictionary)
         :param flat_channels: Number of channels for the dense layers
-        :param flat_kernel_size: Size of the kernel used to create the "dense"
-            convolutional layers
+        :param flat_kernel_size: Size of the kernel used to create the
+            "dense" convolutional layers
         """
         super().__init__()
 
@@ -176,7 +178,8 @@ class DeconvNet(nn.Module):
         flat_out_channels = deconv_block_args[0]['in_channels']
 
         # Setup the flat layers
-        self.flat = nn.Conv2d(flat_in_channels, flat_channels, flat_kernel_size)
+        self.flat = nn.Conv2d(flat_in_channels, flat_channels,
+                              flat_kernel_size)
         self.flat2 = nn.Conv2d(flat_channels, flat_channels, 1)
         self.unflatten = nn.ConvTranspose2d(flat_channels, flat_out_channels,
                                             flat_kernel_size)
@@ -243,13 +246,13 @@ class DeconvNet(nn.Module):
 
 class StandardFeatureNet(DeconvNet):
     """
-    The configuration used for my bachelor project. It has only 1 output
-    feature map with three sections of conv and deconv blocks respectively,
-    totalling 21 layers including the flat section.
+    The configuration used for my bachelor project. It has only 1
+    output feature map with three sections of conv and deconv blocks
+    respectively, totalling 21 layers including the flat section.
 
-    The code might serve as an example of how the general DeconvNet can be
-    instantiated in a boxed manner, hiding the complexity and cumbersome
-    setup behind another class.
+    The code might serve as an example of how the general DeconvNet
+    can be instantiated in a boxed manner, hiding the complexity and
+    cumbersome setup behind another class.
     """
 
     def __init__(self):
