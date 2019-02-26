@@ -1,4 +1,5 @@
 import math
+import torch
 
 
 def dist(p1, p2):
@@ -86,4 +87,5 @@ def f1_score(precision, recall):
         return 2 / k
 
 
-
+def gray_to_rgb(tensor):
+    return torch.cat((tensor, tensor, tensor))

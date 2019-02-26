@@ -1,4 +1,8 @@
+visdom
+cv2
+tqdm
+torchsummary
+progressbar
+ignite
 torch
 torchvision
-torchsample
-torchnet

@@ -3,7 +3,7 @@ import torch.optim as optim
 import torch.nn as nn
 
 from featurenet import network
-from featurenet import training
+from featurenet import training_old
 from featurenet import helpers
 
 if __name__ == '__main__':
@@ -11,7 +11,7 @@ if __name__ == '__main__':
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.SGD(model.parameters(), lr=1e-5)
 
-    trainer = training.Trainer(model, criterion, optimizer)
+    trainer = training_old.Trainer(model, criterion, optimizer)
 
     # Datasets (invalid values are there just for playing with how the code
     # looks. Actual implementation will come later).

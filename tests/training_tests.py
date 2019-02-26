@@ -3,7 +3,8 @@ import unittest
 import torch
 import torch.nn.functional as F
 
-from featurenet import training
+from featurenet import training_old
+
 
 class DataLoggerTests(unittest.TestCase):
 
@@ -37,6 +38,6 @@ class DataLoggerTests(unittest.TestCase):
         ]
 
         for arg_instance in arguments:
-            logger = training.DataLogger(arg_instance['num_classes'])
+            logger = training_old.DataLogger(arg_instance['num_classes'])
             logger.log_statistics(arg_instance['input'],
                                   arg_instance['output'])

@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, '../')
 
-from featurenet import network, training, dataset
+from featurenet import network, training_old, dataset
 
 import os
 import torch
@@ -11,7 +11,7 @@ model = network.StandardFeatureNet()
 criterion = nn.BCEWithLogitsLoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 
-trainer = training.Trainer(model, criterion, optimizer)
+trainer = training_old.Trainer(model, criterion, optimizer)
 
 import cv2 as cv
 import matplotlib.pyplot as plt

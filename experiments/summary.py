@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, '../')
 
-from featurenet import network, training, dataset
+from featurenet import network, training_old, dataset
 
 import os
 import torch

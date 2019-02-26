@@ -10,14 +10,13 @@ import torchvision.transforms.functional as TF
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
-from torchsample.transforms import tensor_transforms
 
 
 class SyntheticDataSet(Dataset):
     def __init__(self,
                  base_path, subset='train',
                  input_size=(640, 480),
-                 input_crop=(224, 224),
+                 input_crop=(480, 480),
                  input_resize=(112, 112),
                  target_size=(112, 112)):
         path = os.path.join(base_path, subset)
