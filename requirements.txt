@@ -1,3 +1,5 @@
+pandas
+numpy
 visdom
 cv2
 tqdm

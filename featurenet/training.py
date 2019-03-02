@@ -3,47 +3,20 @@ from ignite.metrics import Accuracy, Loss, Precision, Recall
 from ignite.handlers import ModelCheckpoint, EarlyStopping
 
 from tqdm import tqdm
+import os
 
-from featurenet import visualisation
-from featurenet import helpers
+from featurenet.visualisation import MetricPlot, Images, Html, properties
+from featurenet.logging import Logger, ConfusionMatrix
+from featurenet.helpers import time_code_id, gray_to_rgb
 
 import torch
 import torch.nn.functional as F
 from torch.utils.data import RandomSampler
 
-import matplotlib.pyplot as plt
-
-from datetime import datetime
-import visdom
-
-
-class Visualizations:
-    def __init__(self, env_name=None):
-        if env_name is None:
-            env_name = str(datetime.now().strftime("%d-%m %Hh%M"))
-        self.env_name = env_name
-        self.vis = visdom.Visdom(env=self.env_name)
-        self.loss_win = None
-
-    def plot_loss(self, loss, step):
-        self.loss_win = self.vis.line(
-            [loss],
-            [step],
-            win=self.loss_win,
-            update='append' if self.loss_win else None,
-            opts=dict(
-                xlabel='Step',
-                ylabel='Loss',
-                title='Loss (mean per 10 steps)',
-            )
-        )
-
 
 def flatten(output):
     y_pred, y = output
-    y = torch.round(y)
-    y_pred = torch.round(torch.sigmoid(y_pred))
-    return y_pred.view(-1), y.view(-1)
+    return torch.sigmoid(y_pred), y
 
 
 def train(model,
@@ -54,25 +27,25 @@ def train(model,
           num_epochs,
           log_interval,
           output_dir,
-          prefix,
           early_stopping_strikes=1,
-          device='cuda',
-          metrics=None):
-    if metrics is None:
-        metrics = {
-            'accuracy': Accuracy(output_transform=flatten),
-            'precision': Precision(output_transform=flatten, average=True),
-            'recall': Recall(output_transform=flatten, average=True),
-            'nll': Loss(F.binary_cross_entropy_with_logits)
-        }
+          device='cuda'):
+    metrics = {
+        'confusion_matrix': ConfusionMatrix(output_transform=flatten),
+        'accuracy': Accuracy(output_transform=flatten),
+        'precision': Precision(output_transform=flatten, average=True),
+        'recall': Recall(output_transform=flatten, average=True),
+        'nll': Loss(F.binary_cross_entropy_with_logits)
+    }
 
     trainer = create_supervised_trainer(model, optimizer, criterion, device)
     evaluator = create_supervised_evaluator(model,
                                             metrics=metrics,
                                             device=device)
 
+    time_code = time_code_id()
+
     checkpoint_handler = ModelCheckpoint(output_dir,
-                                         prefix,
+                                         time_code,
                                          save_interval=2,
                                          n_saved=2,
                                          create_dir=True,
@@ -84,33 +57,39 @@ def train(model,
     trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler, {'model': model})
     evaluator.add_event_handler(Events.COMPLETED, early_stopping_handler)
 
+    iter_logger = Logger(['nll'], 'iter_logger')
+    train_logger = Logger(['confusion_matrix', 'accuracy', 'precision', 'recall', 'nll'], 'training')
+    val_logger = Logger(['confusion_matrix', 'accuracy', 'precision', 'recall', 'nll'], 'validation')
+    loggers = [train_logger, val_logger]
+
+    plot_env = 'plots'
+    viz_env = 'viz'
+
     desc = "ITERATION - loss: {:.2f}"
     pbar = tqdm(
         initial=0, leave=False, total=len(train_loader),
         desc=desc.format(0)
     )
 
-    loss_per_iteration = visualisation.Plot(title='Loss (per iteration)',
-                                            y_label='Loss',
-                                            x_label='Iteration',
-                                            env_name='test')
+    loss_per_iteration = MetricPlot([iter_logger], 'nll', env_name=plot_env, units='Iterations')
 
-    accuary_plot = visualisation.Plot(title='Accuracy',
-                                      y_label='',
-                                      x_label='Epoch',
-                                      env_name='test')
+    accuracy_plot = MetricPlot(loggers, 'accuracy', env_name=plot_env)
 
-    precision_plot = visualisation.Plot(title='Precision',
-                                        y_label='',
-                                        x_label='Epoch',
-                                        env_name='test')
+    precision_plot = MetricPlot(loggers, 'precision', env_name=plot_env)
 
-    recall_plot = visualisation.Plot(title='Recall',
-                                     y_label='',
-                                     x_label='Epoch',
-                                     env_name='test')
+    recall_plot = MetricPlot(loggers, 'recall', env_name=plot_env)
 
-    imgwin = visualisation.Images(num_cols=4, env_name='test')
+    imgwin = Images(num_cols=4, env_name=viz_env)
+    metrics_window = Html(env_name=plot_env)
+
+    props = [
+        {'type': 'button', 'name': 'Stop training', 'value': 'Stop training'}
+    ]
+
+    # TODO: Hacky
+    @properties('plots', props)
+    def handle_events(event):
+        trainer.terminate()
 
     @trainer.on(Events.ITERATION_COMPLETED)
     def log_training_loss(engine):
@@ -120,8 +99,8 @@ def train(model,
             pbar.desc = desc.format(engine.state.output)
             pbar.update(log_interval)
 
-            loss_per_iteration.update(engine.state.output, engine.state.iteration)
-
+            iter_logger.log_step({'nll': engine.state.output})
+            loss_per_iteration.update()
 
     @trainer.on(Events.EPOCH_COMPLETED)
     def show_sample_outputs(engine):
@@ -134,10 +113,10 @@ def train(model,
             out = model(inp.unsqueeze(0).cuda())
             out = torch.sigmoid(out)
             img_list.append(inp * 255)
-            pred = helpers.gray_to_rgb(out.cpu()[0])
-            img_list.append(pred*255)
-            img_list.append(torch.round(pred)*255)
-            img_list.append(helpers.gray_to_rgb(target) * 255)
+            pred = gray_to_rgb(out.cpu()[0])
+            img_list.append(pred * 255)
+            img_list.append(torch.round(pred) * 255)
+            img_list.append(gray_to_rgb(target) * 255)
 
         img_tensor = torch.stack(img_list)
         imgwin.update(img_tensor)
@@ -154,6 +133,8 @@ def train(model,
                 .format(engine.state.epoch, avg_accuracy, avg_nll)
         )
 
+        train_logger.log_step(metrics)
+
     @trainer.on(Events.EPOCH_COMPLETED)
     def log_validation_results(engine):
         evaluator.run(val_loader)
@@ -166,8 +147,18 @@ def train(model,
 
         pbar.n = pbar.last_print_n = 0
 
-        accuary_plot.update(metrics['accuracy'], engine.state.epoch)
-        precision_plot.update(metrics['precision'], engine.state.epoch)
-        recall_plot.update(metrics['recall'], engine.state.epoch)
+        val_logger.log_step(metrics)
+        metrics_window.update(val_logger.to_html())
+
+    @trainer.on(Events.EPOCH_COMPLETED)
+    def update_plots(engine):
+        accuracy_plot.update()
+        precision_plot.update()
+        recall_plot.update()
+
+    @trainer.on(Events.COMPLETED)
+    def trainer_finalize(engine):
+        val_logger.save(os.path.join(output_dir, time_code + '_metrics_val.json'))
+        train_logger.save(os.path.join(output_dir, time_code + '_metrics_train.json'))
 
     trainer.run(train_loader, num_epochs)

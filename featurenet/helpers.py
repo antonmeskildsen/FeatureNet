@@ -1,5 +1,6 @@
 import math
 import torch
+from datetime import datetime
 
 
 def dist(p1, p2):
@@ -89,3 +90,7 @@ def f1_score(precision, recall):
 
 def gray_to_rgb(tensor):
     return torch.cat((tensor, tensor, tensor))
+
+
+def time_code_id():
+    return str(datetime.now().strftime("%d-%m-%Hh%M"))

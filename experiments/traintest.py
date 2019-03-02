@@ -13,10 +13,10 @@ path = 'E:\\Documents\\Eyes\\UnityEyes_Windows\\'
 
 def main():
     dset = dataset.SyntheticDataSet(path,
-                                    subset='train',
+                                    subset='train_big',
                                     input_crop=(320, 320))
     valset = dataset.SyntheticDataSet(path,
-                                      subset='val',
+                                      subset='val_big',
                                       input_crop=(320, 320))
     model = network.StandardFeatureNet()
     model.cuda()
@@ -44,10 +44,7 @@ def main():
                    val_loader,
                    num_epochs=20,
                    log_interval=1,
-                   output_dir=os.path.join(path, 'models_tmp'),
-                   prefix='m1')
-
-    torch.save(model.state_dict(), 'models/test2.pkl')
+                   output_dir=os.path.join(path, 'models_tmp'))
 
 
 if __name__ == '__main__':

@@ -1,14 +1,19 @@
-import datetime
 import time
 import visdom
 
+import numpy as np
+
 from abc import ABC
+from typing import List
+
+from featurenet.logging import Logger
+from featurenet.helpers import time_code_id
 
 
 class Window(ABC):
     def __init__(self, env_name):
         if env_name is None:
-            env_name = str(datetime.now().strftime("%d-%m %Hh%M"))
+            env_name = time_code_id()
         self.env_name = env_name
         self.win = None
         self.vis = visdom.Visdom(env=self.env_name)
@@ -20,23 +25,31 @@ class Window(ABC):
         self.vis.close(self.win)
 
 
-class Plot(Window):
-    def __init__(self, title, y_label, x_label, env_name=None):
+class MetricPlot(Window):
+    def __init__(self, loggers: List[Logger], metric: str, units='Epoch', line_colors=None, env_name=None):
         super().__init__(env_name)
-        self.title = title
-        self.y_label = y_label
-        self.x_label = x_label
+        if line_colors is None:
+            line_colors = np.array([255, 0, 255])
+        self.line_colors = line_colors
+        self.loggers = loggers
+        self.metric = metric
+        self.units = units
+        self.legend = [m.name for m in self.loggers]
 
-    def update(self, x, y):
+    def update(self):
+        data = np.vstack([m[self.metric] for m in self.loggers]).T
+        x = np.linspace(1, data.shape[0], data.shape[0])
         self.win = self.vis.line(
-            [x],
-            [y],
+            data,
+            x,
             win=self.win,
-            update='append' if self.win else None,
+            update='replace' if self.win else None,
             opts=dict(
-                xlabel=self.x_label,
-                ylabel=self.y_label,
-                title=self.title,
+                legend=self.legend,
+                markers=True,
+                xlabel=self.units,
+                ylabel=self.metric,
+                title=self.metric,
             )
         )
         time.sleep(0.01)
@@ -68,3 +81,20 @@ class Images(Window):
             self.padding,
             win=self.win
         )
+
+
+class Html(Window):
+
+    def update(self, html):
+        self.win = self.vis.text(
+            html,
+            win=self.win
+        )
+
+
+def properties(env_name, props):
+    def decorator(callback):
+        vis = visdom.Visdom(env=env_name)
+        win = vis.properties(props)
+        vis.register_event_handler(callback, win)
+    return decorator
