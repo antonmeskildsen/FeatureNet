@@ -18,7 +18,7 @@ def main():
     valset = dataset.SyntheticDataSet(path,
                                       subset='val_big',
                                       input_crop=(320, 320))
-    model = network.StandardFeatureNet()
+    model = network.StandardFeatureNet(use_conv_transpose=False)
     model.cuda()
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)

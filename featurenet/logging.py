@@ -7,6 +7,14 @@ from ignite.exceptions import NotComputableError
 from ignite.metrics import accuracy
 
 
+def is_json_serializable(x):
+    try:
+        json.dumps(x)
+        return True
+    except (TypeError, OverflowError):
+        return False
+
+
 class ConfusionMatrix(accuracy._BaseClassification):
 
     def update(self, output):
@@ -57,6 +65,9 @@ class Logger:
 
     def log_step(self, metrics: Dict[str, float]):
         for k, v in metrics.items():
+            if type(v) == torch.Tensor:
+                v = v.tolist()
+
             self.data[k].append(v)
 
     def save(self, path):

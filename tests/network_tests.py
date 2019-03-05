@@ -1,14 +1,20 @@
 import featurenet.network as network
 
-import unittest
+import pytest
+
+from hypothesis import given
+from hypothesis.strategies import booleans, builds, integers
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
 
-class ConvBlockTests(unittest.TestCase):
+def odd(n):
+    return 2*n+1
 
+
+class TestConvBlock:
     invalid_setup_args = [
         (1, 1, 3, 0, 0),
         (0, 1, 3, 1, 0),
@@ -22,7 +28,8 @@ class ConvBlockTests(unittest.TestCase):
 
     def test_invalid_setup(self):
         for args in self.invalid_setup_args:
-            self.assertRaises(ValueError, network.ConvBlock, *args)
+            with pytest.raises(ValueError):
+                network.ConvBlock(*args)
 
     @staticmethod
     def _iter_length(it):
@@ -31,7 +38,7 @@ class ConvBlockTests(unittest.TestCase):
     def test_correct_block_number(self):
         for num in [1, 5, 10]:
             block = network.ConvBlock(1, 1, 3, num)
-            self.assertEqual(num, self._iter_length(block.convs.children()))
+            assert num == self._iter_length(block.convs.children())
 
     def test_working_forward(self):
         # Setup module
@@ -61,11 +68,11 @@ class ConvBlockTests(unittest.TestCase):
         for b, a in zip(before, after):
             c = (a != b)
             if c.sum() == 0:
-                self.fail('Weights were not updated correctly for all layers!'
-                          '\n {}'.format(a))
+                pytest.fail('Weights were not updated correctly for all layers!'
+                            '\n {}'.format(a))
 
 
-class DeconvBlockTests(unittest.TestCase):
+class TestDeconvBlock:
     invalid_setup_args = [
         (1, 1, 3, 0),
         (0, 1, 3, 1),
@@ -79,7 +86,8 @@ class DeconvBlockTests(unittest.TestCase):
 
     def test_invalid_setup(self):
         for args in self.invalid_setup_args:
-            self.assertRaises(ValueError, network.DeconvBlock, *args)
+            with pytest.raises(ValueError):
+                network.DeconvBlock(*args)
 
     @staticmethod
     def _iter_length(it):
@@ -88,11 +96,15 @@ class DeconvBlockTests(unittest.TestCase):
     def test_correct_block_number(self):
         for num in [1, 5, 10]:
             block = network.DeconvBlock(1, 1, 3, num)
-            self.assertEqual(num, self._iter_length(block.convs.children()))
+            assert num == self._iter_length(block.convs.children())
 
-    def test_working_forward(self):
+    @given(kernel_size=builds(odd, integers(0, 5)), use_transpose=booleans())
+    def test_working_forward(self, kernel_size, use_transpose):
         # Setup module
-        block = network.DeconvBlock(3, 1, 3, 3)
+        block = network.DeconvBlock(3, 1,
+                                    kernel_size=3,
+                                    num_layers=kernel_size,
+                                    use_conv_transpose=use_transpose)
 
         # Setup training
         optimizer = optim.SGD(block.parameters(), lr=1e10)
@@ -117,13 +129,14 @@ class DeconvBlockTests(unittest.TestCase):
 
         # Test that all weight tensors have changed
         for b, a in zip(before, after):
-            c = (a != b)
-            if c.sum() == 0:
-                self.fail('Weights were not updated correctly for all layers!'
-                          '\n {}'.format(a))
+            if len(b.shape) > 1:
+                c = torch.ne(b, a)
+                if c.sum() == 0:
+                    pytest.fail('Weights were not updated correctly for all layers!'
+                                '\n {}'.format(a))
 
 
-class DeconvNetTests(unittest.TestCase):
+class TestDeconvNet:
 
     def test_invalid_setup_args(self):
         conv = {
@@ -145,7 +158,8 @@ class DeconvNetTests(unittest.TestCase):
         ]
 
         for args in configurations:
-            self.assertRaises(ValueError, network.DeconvNet, *args)
+            with pytest.raises(ValueError):
+                network.DeconvNet(*args)
 
     def test_invalid_conv_deconv_block_configuration(self):
         conv_valid = {
@@ -176,7 +190,8 @@ class DeconvNetTests(unittest.TestCase):
         ]
 
         for args in configurations:
-            self.assertRaises(ValueError, network.DeconvNet, *args)
+            with pytest.raises(ValueError):
+                network.DeconvNet(*args)
 
     def test_channel_correspondence_valid(self):
         conv = [
@@ -207,7 +222,7 @@ class DeconvNetTests(unittest.TestCase):
         try:
             network.DeconvNet(conv, deconv, 16, 3)
         except ValueError:
-            self.fail("Shouldn't raise ValueError for valid configuration")
+            pytest.fail("Shouldn't raise ValueError for valid configuration")
 
     def test_channel_correspondence_invalid(self):
         conv = [
@@ -235,8 +250,8 @@ class DeconvNetTests(unittest.TestCase):
             },
         ]
 
-        self.assertRaises(ValueError, network.DeconvNet,
-                          *(conv, deconv, 16, 3))
+        with pytest.raises(ValueError):
+            network.DeconvNet(conv, deconv, 16, 3)
 
     def test_correct_output_size(self):
         conv = {
@@ -252,6 +267,7 @@ class DeconvNetTests(unittest.TestCase):
         }
 
         net = network.DeconvNet([conv], [deconv], 8, 3)
+        # TODO: Not done!!
 
     def test_working_forward(self):
         # Configuration
@@ -307,17 +323,17 @@ class DeconvNetTests(unittest.TestCase):
         for b, a in zip(before, after):
             c = (a != b)
             if c.sum() == 0:
-                self.fail('Weights were not updated correctly for all layers!'
-                          '\n {}'.format(a))
+                pytest.fail('Weights were not updated correctly for all layers!'
+                            '\n {}'.format(a))
 
 
-class StandardFeatureNetTests(unittest.TestCase):
+class TestStandardFeatureNet:
 
     def test_correct_setup(self):
         net = network.StandardFeatureNet()
 
-        self.assertEqual(3, len(net.conv_blocks))
-        self.assertEqual(3, len(net.deconv_blocks))
+        assert 3 == len(net.conv_blocks)
+        assert 3 == len(net.deconv_blocks)
 
     def test_valid_input_and_output(self):
         net = network.StandardFeatureNet()
@@ -325,4 +341,4 @@ class StandardFeatureNetTests(unittest.TestCase):
 
         output = net(input)
 
-        self.assertEqual((1, 1, 112, 112), output.size())
+        assert (1, 1, 112, 112) == output.size()

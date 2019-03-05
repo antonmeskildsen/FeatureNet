@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, '../')
 
-from featurenet import network, training_old, dataset
+from featurenet import network
 
 import os
 import torch
@@ -15,22 +15,20 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 
 from PIL import Image
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-from torchsample.transforms import tensor_transforms
 import torchvision.transforms.functional as TF
 
-path = 'E:\\Eyes\\UnityEyes_Windows\\'
+path = 'E:\\Documents\\Eyes\\UnityEyes_Windows\\'
 
 
 def main():
-    model = network.StandardFeatureNet()
-    model.load_state_dict(torch.load('models/test2.pkl'))
+    #model = network.StandardFeatureNet(use_conv_transpose=False)
+    model = torch.load(os.path.join(path, 'models_tmp\\05-03-11h09_model_8.pth'))
+    #model.load_state_dict(state_dict)
     model.cuda()
 
-    input_img = Image.open(os.path.join(path, 'train\\1.jpg'))
-    input_img = TF.center_crop(input_img, (224, 224))
-    input_img = TF.resize(input_img, (112, 112))
+    input_img = Image.open(os.path.join(path, 'Background.jpg'))
+    #input_img = TF.center_crop(input_img, (224, 224))
+    input_img = TF.resize(input_img, (240, 320))
 
     plt.figure()
     plt.subplot(2, 2, 1)

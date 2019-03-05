@@ -1,3 +1,5 @@
+hypothesis
+pytest
 pandas
 numpy
 visdom

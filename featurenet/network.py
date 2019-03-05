@@ -38,15 +38,17 @@ class ConvBlock(nn.Module):
 
         _validate_args(in_channels, out_channels, kernel_size, num_layers)
 
+        self.kernel_size = kernel_size
+        self.padding = (kernel_size - 1) // 2
+
         conv_list = [
-            self._create_single_block(in_channels, out_channels, kernel_size)
+            self._create_single_block(in_channels, out_channels)
         ]
 
         # Create the rest of the blocks
         for _ in range(num_layers - 1):
             conv_list.append(
-                self._create_single_block(out_channels, out_channels,
-                                          kernel_size)
+                self._create_single_block(out_channels, out_channels)
             )
 
         self.convs = nn.Sequential(*conv_list)
@@ -59,12 +61,10 @@ class ConvBlock(nn.Module):
         x = self.drop(x)
         return x, indices
 
-    @staticmethod
-    def _create_single_block(in_channels, out_channels,
-                             kernel_size):
+    def _create_single_block(self, in_channels, out_channels):
         return nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size, padding=1,
-                      stride=1),
+            nn.Conv2d(in_channels, out_channels, self.kernel_size,
+                      padding=self.padding),
             nn.BatchNorm2d(out_channels),
             nn.ReLU()
         )
@@ -82,7 +82,8 @@ class DeconvBlock(nn.Module):
     to the forward method.
     """
 
-    def __init__(self, in_channels, out_channels, kernel_size, num_layers=3):
+    def __init__(self, in_channels, out_channels, kernel_size, num_layers=3,
+                 use_conv_transpose=True):
         """
         Construct a new deconvolution block.
 
@@ -97,17 +98,21 @@ class DeconvBlock(nn.Module):
 
         _validate_args(in_channels, out_channels, kernel_size, num_layers)
 
+        self.kernel_size = kernel_size
+        self.use_conv_transpose = use_conv_transpose
+
+        self.padding = (kernel_size-1)//2
+
         # All deconv blocks must contain at least one block mapping the
         # number of input channels to the number of output channels
         conv_list = [
-            self._create_single_block(in_channels, out_channels, kernel_size)
+            self._create_single_block(in_channels, out_channels)
         ]
 
         # Create the rest of the blocks
         for _ in range(num_layers - 1):
             conv_list.append(
-                self._create_single_block(out_channels, out_channels,
-                                          kernel_size)
+                self._create_single_block(out_channels, out_channels)
             )
 
         self.convs = nn.Sequential(*conv_list)
@@ -118,14 +123,19 @@ class DeconvBlock(nn.Module):
         x = self.convs(x)
         return x
 
-    @staticmethod
-    def _create_single_block(in_channels, out_channels,
-                             kernel_size):
-        return nn.Sequential(
-            nn.ConvTranspose2d(in_channels, out_channels,
-                               kernel_size, padding=1),
-            nn.BatchNorm2d(out_channels)
-        )
+    def _create_single_block(self, in_channels, out_channels):
+        if self.use_conv_transpose:
+            return nn.Sequential(
+                nn.ConvTranspose2d(in_channels, out_channels, self.kernel_size,
+                                   padding=self.padding),
+                nn.BatchNorm2d(out_channels)
+            )
+        else:
+            return nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, self.kernel_size,
+                          padding=self.padding),
+                nn.BatchNorm2d(out_channels)
+            )
 
 
 class DeconvNet(nn.Module):
@@ -208,7 +218,7 @@ class DeconvNet(nn.Module):
             for i in range(1, len(conf)):
                 if conf[i-1]['out_channels'] != \
                         conf[i]['in_channels']:
-                    raise ValueError('Channel in convolutional blocks are not '
+                    raise ValueError('Channel in convolutional blocks is not '
                                      'in correspondence at layer {}-{}'
                                      .format(i-1, i))
 
@@ -255,7 +265,7 @@ class StandardFeatureNet(DeconvNet):
     cumbersome setup behind another class.
     """
 
-    def __init__(self):
+    def __init__(self, use_conv_transpose=True):
         conv_configuration = [
             {
                 'in_channels': 3,
@@ -291,6 +301,10 @@ class StandardFeatureNet(DeconvNet):
                 'kernel_size': 3
             }
         ]
+
+        if not use_conv_transpose:
+            for arg_dict in deconv_configuration:
+                arg_dict['use_conv_transpose'] = False
 
         super().__init__(conv_configuration, deconv_configuration, 256, 14)
 
