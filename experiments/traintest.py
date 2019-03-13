@@ -8,7 +8,10 @@ from torch.utils import data
 
 from torchsummary import summary
 
+from tqdm import tqdm
+
 path = 'E:\\Documents\\Eyes\\UnityEyes_Windows\\'
+
 
 
 def main():
@@ -18,7 +21,7 @@ def main():
     valset = dataset.SyntheticDataSet(path,
                                       subset='val_big',
                                       input_crop=(320, 320))
-    model = network.StandardFeatureNet(use_conv_transpose=False)
+    model = network.StandardFeatureNet(out_channels=2, use_conv_transpose=False)
     model.cuda()
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
@@ -44,6 +47,7 @@ def main():
                    val_loader,
                    num_epochs=20,
                    log_interval=1,
+                   tqdm=tqdm,
                    output_dir=os.path.join(path, 'models_tmp'))
 
 

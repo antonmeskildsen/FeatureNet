@@ -2,7 +2,7 @@ from ignite.engine import Events, create_supervised_evaluator, create_supervised
 from ignite.metrics import Accuracy, Loss, Precision, Recall
 from ignite.handlers import ModelCheckpoint, EarlyStopping
 
-from tqdm import tqdm
+from tqdm import tqdm_notebook
 import os
 
 from featurenet.visualisation import MetricPlot, Images, Html, properties
@@ -28,7 +28,8 @@ def train(model,
           log_interval,
           output_dir,
           early_stopping_strikes=1,
-          device='cuda'):
+          device='cuda',
+          tqdm=tqdm_notebook):
     metrics = {
         'confusion_matrix': ConfusionMatrix(output_transform=flatten),
         'accuracy': Accuracy(output_transform=flatten),
@@ -51,11 +52,11 @@ def train(model,
                                          create_dir=True,
                                          require_empty=False)
 
-    early_stopping_handler = EarlyStopping(early_stopping_strikes,
-                                           lambda engine: -engine.state.metrics['nll'],
-                                           trainer=trainer)
+    #early_stopping_handler = EarlyStopping(early_stopping_strikes,
+    #                                       lambda engine: -engine.state.metrics['nll'],
+    #                                       trainer=trainer)
     trainer.add_event_handler(Events.EPOCH_COMPLETED, checkpoint_handler, {'model': model})
-    evaluator.add_event_handler(Events.COMPLETED, early_stopping_handler)
+    #evaluator.add_event_handler(Events.COMPLETED, early_stopping_handler)
 
     iter_logger = Logger(['nll'], 'iter_logger')
     train_logger = Logger(['confusion_matrix', 'accuracy', 'precision', 'recall', 'nll'], 'training')
@@ -79,7 +80,7 @@ def train(model,
 
     recall_plot = MetricPlot(loggers, 'recall', env_name=plot_env)
 
-    imgwin = Images(num_cols=4, env_name=viz_env)
+    imgwin = Images(num_cols=1+3*model.out_channels, env_name=viz_env)
     metrics_window = Html(env_name=plot_env)
 
     props = [
@@ -110,13 +111,15 @@ def train(model,
 
         for i in sampler:
             inp, target = val_loader.dataset.__getitem__(i)
-            out = model(inp.unsqueeze(0).cuda())
-            out = torch.sigmoid(out)
             img_list.append(inp * 255)
-            pred = gray_to_rgb(out.cpu()[0])
-            img_list.append(pred * 255)
-            img_list.append(torch.round(pred) * 255)
-            img_list.append(gray_to_rgb(target) * 255)
+            out = model(inp.unsqueeze(0).cuda())
+            #out = torch.nn.Softmax2d(out).cpu()[0]
+            out = torch.sigmoid(out).cpu()[0]
+            for i in range(model.out_channels):
+                pred = gray_to_rgb(out[i].unsqueeze(0))
+                img_list.append(pred * 255)
+                img_list.append(torch.round(pred) * 255)
+                img_list.append(gray_to_rgb(target[i].unsqueeze(0)) * 255)
 
         img_tensor = torch.stack(img_list)
         imgwin.update(img_tensor)
@@ -128,10 +131,9 @@ def train(model,
         metrics = evaluator.state.metrics
         avg_accuracy = metrics['accuracy']
         avg_nll = metrics['nll']
-        tqdm.write(
+        pbar.set_postfix_str(
             "Training Results - Epoch: {}  Avg accuracy: {:.2f} Avg loss: {:.2f}"
-                .format(engine.state.epoch, avg_accuracy, avg_nll)
-        )
+            .format(engine.state.epoch, avg_accuracy, avg_nll))
 
         train_logger.log_step(metrics)
 
@@ -141,9 +143,9 @@ def train(model,
         metrics = evaluator.state.metrics
         avg_accuracy = metrics['accuracy']
         avg_nll = metrics['nll']
-        tqdm.write(
+        pbar.set_postfix_str(
             "Validation Results - Epoch: {}  Avg accuracy: {:.2f} Avg loss: {:.2f}"
-                .format(engine.state.epoch, avg_accuracy, avg_nll))
+            .format(engine.state.epoch, avg_accuracy, avg_nll))
 
         pbar.n = pbar.last_print_n = 0
 

@@ -265,10 +265,13 @@ class StandardFeatureNet(DeconvNet):
     cumbersome setup behind another class.
     """
 
-    def __init__(self, use_conv_transpose=True):
+    def __init__(self, in_channels=3, out_channels=1, use_conv_transpose=True):
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+
         conv_configuration = [
             {
-                'in_channels': 3,
+                'in_channels': in_channels,
                 'out_channels': 8,
                 'kernel_size': 3
             },
@@ -297,7 +300,7 @@ class StandardFeatureNet(DeconvNet):
             },
             {
                 'in_channels': 8,
-                'out_channels': 1,
+                'out_channels': out_channels,
                 'kernel_size': 3
             }
         ]

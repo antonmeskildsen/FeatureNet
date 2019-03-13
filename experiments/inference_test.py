@@ -22,7 +22,7 @@ path = 'E:\\Documents\\Eyes\\UnityEyes_Windows\\'
 
 def main():
     #model = network.StandardFeatureNet(use_conv_transpose=False)
-    model = torch.load(os.path.join(path, 'models_tmp\\05-03-11h09_model_8.pth'))
+    model = torch.load(os.path.join(path, 'models_tmp\\13-03-12h47_model_18.pth'))
     #model.load_state_dict(state_dict)
     model.cuda()
 
@@ -41,7 +41,7 @@ def main():
     out = model(input_img.cuda())
     print(time.time()-s)
     out = out.cpu().detach().numpy()
-    out = out[0][0]
+    out = out[0][1]
 
     plt.subplot(2, 2, 2)
     plt.imshow(out)
